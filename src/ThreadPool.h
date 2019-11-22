@@ -6,76 +6,83 @@
 #include <future>
 #include <vector>
 #include <queue>
-#include "BoundedQueue.h"
+#include "WorkStealingBoundedQueue.h"
 
-class ThreadPool
+namespace JobSystem
 {
-public:
-  static const size_t maxTasks = 4096;
-
-  explicit ThreadPool(size_t numThreads);
-  virtual ~ThreadPool();
-
-  ThreadPool(const ThreadPool &) = delete;
-  ThreadPool & operator=(const ThreadPool &) = delete;
-
-  template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> Async(FunctionType && job, Args &&... args);
-  void Stop();
-
-  // Todo: Is queue empty or anything in it done
-
-  struct TaskWrapper
+  struct Job
   {
-    // some extra stuff can be put here
-    std::function<void()> task = nullptr;
+    // TODO + parent
+    // TODO + child task count
+    std::function<void()> task = nullptr; // TODO use function pointer
   };
 
-  bool IsEmpty();
+  // TODO utulize
+  enum class JobPriority
+  {
+    Low,
+    Normal,
+    High
+  };
 
-protected:
-  std::vector<std::thread> mWorkers;
-  BoundedQueue<TaskWrapper> mMpmcQueue;
+  class ThreadPool
+  {
+  public:
+    static const size_t maxJobs = 4096;
 
-  std::atomic_bool mIsStop;
-  std::atomic_bool mIsEmpty;
-};
+    explicit ThreadPool(size_t numThreads);
+    virtual ~ThreadPool();
 
-ThreadPool::ThreadPool(const size_t numThreads) : mMpmcQueue(ThreadPool::maxTasks)
-{
-  mIsStop = false;
-  mIsEmpty = true;
-  for (size_t i = 0; i < numThreads; ++i)
-    mWorkers.emplace_back([&] {
-      for (;;) {
-        if (mIsStop) return;
-        TaskWrapper task;
-        if (mMpmcQueue.Dequeue(task)) {
-          task.task();
-        } else {
-          mIsEmpty = true;
+    ThreadPool(const ThreadPool &) = delete;
+    ThreadPool & operator=(const ThreadPool &) = delete;
+
+    template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> Async(FunctionType && job, Args &&... args);
+
+    void Stop();
+    bool IsEmpty();
+
+  protected:
+    class WorkerThread
+    {};
+
+    std::vector<std::thread> mWorkers;
+    WorkStealingBoundedQueue<Job> mQueue;
+
+    std::atomic_bool mIsStop;
+  };
+
+  ThreadPool::ThreadPool(const size_t numThreads) : mQueue(ThreadPool::maxJobs)
+  {
+    mIsStop = false;
+    for (size_t i = 0; i < numThreads; ++i)
+      mWorkers.emplace_back([&] {
+        for (;;) {
+          if (mIsStop) return;
+          Job task;
+          if (mQueue.Pop(task)) task.task();
         }
-      }
-    });
-}
+      });
+  }
 
-ThreadPool::~ThreadPool()
-{
-  Stop();
-  for (std::thread & worker : mWorkers) worker.join();
-}
+  ThreadPool::~ThreadPool()
+  {
+    Stop();
+    for (std::thread & worker : mWorkers) worker.join();
+  }
 
-template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> ThreadPool::Async(FunctionType && job, Args &&... args)
-{
-  using ReturnType = typename std::result_of<FunctionType(Args...)>::type;
-  auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<FunctionType>(job), std::forward<Args>(args)...));
-  std::future<ReturnType> res = task->get_future();
+  template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> ThreadPool::Async(FunctionType && job, Args &&... args)
+  {
+    using ReturnType = typename std::result_of<FunctionType(Args...)>::type;
+    auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<FunctionType>(job), std::forward<Args>(args)...));
+    std::future<ReturnType> res = task->get_future();
 
-  if (mIsStop) throw std::runtime_error("Cannot add new tasks to a stopped ThreadPool");
-  const TaskWrapper taskWrapper({ [task]() { (*task)(); } });
-  if (!mMpmcQueue.Enqueue(taskWrapper)) throw std::runtime_error("bounded task queue is full you cannot add more.");
-  mIsEmpty = false;
-  return res;
-}
+    if (mIsStop) throw std::runtime_error("Cannot add new tasks to a stopped ThreadPool");
+    const Job taskWrapper({ [task]() { (*task)(); } });
+    if (!mQueue.Push(taskWrapper)) throw std::runtime_error("bounded task queue is full you cannot add more.");
+    return res;
+  }
 
-void ThreadPool::Stop() { mIsStop = true; }
-bool ThreadPool::IsEmpty() { return mIsEmpty; }
+  inline void ThreadPool::Stop() { mIsStop = true; }
+  inline bool ThreadPool::IsEmpty() { return mQueue.IsEmpty(); }
+
+} // namespace JobSystem
