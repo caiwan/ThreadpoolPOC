@@ -85,7 +85,8 @@
     - `Push()` only modifies `bottom` and cannot executed concurrently, but
     - `Steal()` reads `bottom` and writes `top`. 
 - Use of fibers within tasks? - [Naughty dog](http://twvideo01.ubm-us.net/o1/vault/gdc2015/presentations/Gyrling_Christian_Parallelizing_The_Naughty.pdf)
-
+- **Paralell for** - https://blog.molecular-matters.com/2015/11/09/job-system-2-0-lock-free-work-stealing-part-4-parallel_for/
+- **Dependencies** - https://blog.molecular-matters.com/2016/04/04/job-system-2-0-lock-free-work-stealing-part-5-dependencies/
 
 
 
@@ -101,6 +102,7 @@
 ## Implementation
 
 ## Notes
+- https://www.youtube.com/watch?v=qdrp6k4rcP4
 - https://www.youtube.com/watch?v=JvHZ_OECOFU
 - [MPMC Example](http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue)
 - [Job request example](http://www.1024cores.net/home/scalable-architecture/task-scheduling-strategies/scheduler-example)

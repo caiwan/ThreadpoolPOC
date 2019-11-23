@@ -121,6 +121,7 @@ namespace JobSystem
     Cell * cell = &mBuffer[bottom & mBufferMask];
     // TODO Increase bottom
     // TODO What do we have to do with sequenceing?
+    // TODO MEMORY BARRIER?
     return false; // TODO Fix this
 
   }
@@ -133,6 +134,7 @@ namespace JobSystem
     Cell * cell = &mBuffer[bottom & mBufferMask];
     // TODO Decrease bottom
     // TODO What do we have to do with sequenceing?
+    // TODO MEMORY BARRIER?
     return false; // TODO Fix this
   }
 
