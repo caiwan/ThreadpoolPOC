@@ -17,6 +17,7 @@ int main(int argc, char ** argv)
 {
   spdlog::init_thread_pool(loggerPoolBuggerSize, 1);
   spdlog::set_pattern("[%E%e%f] [%t] %v");
+  spdlog::set_level(spdlog::level::trace);
   InitGoogleTest(&argc, argv);
   const int res = RUN_ALL_TESTS();
   return res;

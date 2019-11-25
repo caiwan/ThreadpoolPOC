@@ -11,22 +11,22 @@ trim_trailing_whitespace = true
 [*.py]
 indent_size = 4
 
-[*.{c,cpp,h,hpp,inc,inl}]
-indent_size = 2
-indent_style = space
-
-[*.json]
-indent_size = 2
-indent_style = space
-
-[*.{xml,qrc}]
-indent_size = 2
-indent_style = space
-
-[CmakeLists.txt]
-indent_size = 2
-indent_style = space
-
-[*.cmake]
-indent_size = 2
-indent_style = space
+# [*.{c,cpp,h,hpp,inc,inl}]
+# indent_size = 2
+# indent_style = space
+#
+# [*.json]
+# indent_size = 2
+# indent_style = space
+#
+# [*.{xml,qrc}]
+# indent_size = 2
+# indent_style = space
+#
+# [CmakeLists.txt]
+# indent_size = 2
+# indent_style = space
+#
+# [*.cmake]
+# indent_size = 2
+# indent_style = space
