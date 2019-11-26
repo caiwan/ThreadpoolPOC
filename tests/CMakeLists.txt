@@ -8,22 +8,24 @@ set(TEST_TARGET UnitTests)
 file(GLOB_RECURSE SOURCE_FILES *.cpp *.c)
 file(GLOB_RECURSE HEADER_FILES *.hpp *.h *.hh)
 
-include_directories(
-  ${SPDLOG_INCLUDE_DIR}
+add_executable(${TEST_TARGET} EXCLUDE_FROM_ALL ${SOURCE_FILES} ${HEADER_FILES})
+
+message("target_include_directories(${TEST_TARGET} PUIBLIC ${GTEST_INCLUDE_DIR})")
+
+target_include_directories(${TEST_TARGET} PUBLIC
   ${GTEST_INCLUDE_DIR}
-)
-
-add_executable(${TEST_TARGET} EXCLUDE_FROM_ALL ${SOURCE_FILES} ${HEADER_FILES} ../src/ThreadPool.h)
-
-target_link_libraries(${TEST_TARGET}
-  TaskScheduler
-  ${GTEST_LIBRARIES}
-  ${SPDLOG_LIBRARIES}
+  ${SPDLOG_INCLUDE_DIR}
   )
 
 target_link_directories(${TEST_TARGET} PUBLIC
   ${GTEST_LIB_DIR}
   ${SPDLOG_LIB_DIR}
+  )
+
+target_link_libraries(${TEST_TARGET} PUBLIC
+  TaskScheduler
+  ${GTEST_LIBRARIES}
+  ${SPDLOG_LIBRARIES}
   )
 
 set_target_properties(${TEST_TARGET} PROPERTIES FOLDER tests)

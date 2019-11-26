@@ -1,6 +1,6 @@
 # MyProject
 cmake_minimum_required(VERSION 3.15)
-project(MyProject VERSION 0.1.0 LANGUAGES C CXX)
+project(Threadpool VERSION 0.1.0 LANGUAGES C CXX)
 
 cmake_policy(SET CMP0074 NEW)
 

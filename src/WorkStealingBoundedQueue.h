@@ -133,7 +133,7 @@ namespace JobSystem
         pos = mBottom.load(std::memory_order_relaxed);
     }
     cell->data = data;
-    cell->sequence.store(pos + 1, std::memory_order_release);
+    cell->sequence.store(pos + 1, std::memory_order_release); // TODO: What does this particlular line do?
     return true;
   }
 
@@ -153,7 +153,7 @@ namespace JobSystem
         pos = mTop.load(std::memory_order_relaxed);
     }
     data = cell->data;
-    cell->sequence.store(pos + mBufferMask + 1, std::memory_order_release);
+    cell->sequence.store(pos + mBufferMask + 1, std::memory_order_release); // TODO: What does this particlular line do?
     return true;
   }
 

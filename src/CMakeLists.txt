@@ -10,12 +10,11 @@ find_package(Threads REQUIRED)
 file(GLOB_RECURSE SOURCE_FILES *.cpp *.c *.inc)
 file(GLOB_RECURSE HEADER_FILES *.h *.hpp *.inl)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 add_library(${LIBRARY} STATIC ${SOURCE_FILES} ${HEADER_FILES})
-target_include_directories(${LIBRARY} PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${SPDLOG_INCLUDE_DIR}
+
+target_include_directories(${LIBRARY}
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
+  PUBLIC ${SPDLOG_INCLUDE_DIR}
   )
 
 target_link_directories(${LIBRARY} PUBLIC
