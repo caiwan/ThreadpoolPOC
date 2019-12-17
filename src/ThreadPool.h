@@ -6,69 +6,91 @@
 #include <future>
 #include <vector>
 #include <queue>
-#include "WorkStealingBoundedQueue.h"
+#include "BoundedMpmcQueue.h"
+#include "MemoryPoolAllocator.h"
 
 namespace JobSystem
 {
-  struct Job
-  {
-    // TODO + parent
-    // TODO + child task count
-    std::function<void()> task = nullptr; // TODO use function pointer
-  };
+  struct Job;
+  class Worker;
 
-  // TODO utulize
-  enum class JobPriority
-  {
-    Low,
-    Normal,
-    High
-  };
+  typedef void (*JobFunction)(Job *, const void *);
+
+  typedef BoundedMpmcQueue<Job *> JobQueue;
+
+  constexpr size_t cachelineSize = 64;
+  typedef char CachelinePadType[cachelineSize];
+
+  class ThreadPool;
 
   class ThreadPool
   {
+    friend class Worker;
+
   public:
-    static const size_t maxJobs = 4096;
+    static const size_t maxJobCount = 4096;
 
     explicit ThreadPool(size_t numThreads);
     virtual ~ThreadPool();
 
+    template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> Async(FunctionType && job, Args &&... args);
+
     ThreadPool(const ThreadPool &) = delete;
     ThreadPool & operator=(const ThreadPool &) = delete;
 
-    template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> Async(FunctionType && job, Args &&... args);
+    size_t NumWorkers() const { return mNumWorkers; }
 
-    void Stop();
-    bool IsEmpty();
+    Job * CreateJob(JobFunction function);
+    Job * CreateJobAsChild(Job * parent, JobFunction function);
+
+    void Schedule(Job * pJob);
+    void Wait(Job * pJob);
 
   protected:
-    class WorkerThread
-    {};
+    Job * AllocateJob();
+    void Deallocate(Job * pJob);
+    void Steal(JobQueue *& stolenQueue);
 
-    std::vector<std::thread> mWorkers;
-    WorkStealingBoundedQueue<Job> mQueue;
+    Worker * FindWorker();
 
-    std::atomic_bool mIsStop;
+    Job * GetJob();
+
+    void Execute(Job * pJob);
+    void Finish(Job * pJob);
+
+    void Yield() noexcept;
+
+    bool HasJobCompleted(const Job * pJob);
+
+    //    void operator()();
+
+  private:
+    size_t mNumWorkers;
+    Worker ** mWorkers;
+
+    MemoryPoolAllocator mAllocator;
+
+    std::thread::id mainThreadId;
+
+    std::thread * mThreads;
   };
 
-  ThreadPool::ThreadPool(const size_t numThreads) : mQueue(ThreadPool::maxJobs)
+  struct Worker
   {
-    mIsStop = false;
-    for (size_t i = 0; i < numThreads; ++i)
-      mWorkers.emplace_back([&] {
-        for (;;) {
-          if (mIsStop) return;
-          Job task;
-          if (mQueue.Pop(task)) task.task();
-        }
-      });
-  }
+    Worker();
+    JobQueue mQueue;
+    std::atomic_bool mIsTerminated;
+  };
 
-  ThreadPool::~ThreadPool()
+  struct Job
   {
-    Stop();
-    for (std::thread & worker : mWorkers) worker.join();
-  }
+    JobFunction function;
+    Job * parent;
+    std::atomic_char32_t unfinishedJobs;
+    CachelinePadType padding;
+  };
+
+  // ------------------------------------------------------------------------------------------------------------------
 
   template<typename FunctionType, typename... Args> std::future<typename std::result_of<FunctionType(Args...)>::type> ThreadPool::Async(FunctionType && job, Args &&... args)
   {
@@ -76,13 +98,12 @@ namespace JobSystem
     auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<FunctionType>(job), std::forward<Args>(args)...));
     std::future<ReturnType> res = task->get_future();
 
-    if (mIsStop) throw std::runtime_error("Cannot add new tasks to a stopped ThreadPool");
-    const Job taskWrapper({ [task]() { (*task)(); } });
-    if (!mQueue.Push(taskWrapper)) throw std::runtime_error("bounded task queue is full you cannot add more.");
-    return res;
+    // TODO:
+    //    if (mIsStop) throw std::runtime_error("Cannot add new tasks to a stopped ThreadPool");
+    //    const Job taskWrapper({ [task]() { (*task)(); } });
+    //    if (!mQueue.Push(taskWrapper)) throw std::runtime_error("bounded task queue is full you cannot add more.");
+    //    return res;
   }
 
-  inline void ThreadPool::Stop() { mIsStop = true; }
-  inline bool ThreadPool::IsEmpty() { return mQueue.IsEmpty(); }
 
 } // namespace JobSystem

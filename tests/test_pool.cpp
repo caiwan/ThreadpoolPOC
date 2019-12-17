@@ -39,7 +39,7 @@ TEST(PoolTest, DISABLED_PoolOverflowTest)
 
   // given
   // we fill up the queue
-  for (int i = 0; i < JobSystem::ThreadPool::maxJobs; i++) {
+  for (int i = 0; i < JobSystem::ThreadPool::maxJobCount; i++) {
     EXPECT_NO_THROW(threadPool.Async(std::function<void()>([&]() {
       usleep(1000 * 1000); // waste some time
     })));

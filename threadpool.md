@@ -24,7 +24,7 @@
 - [This article](http://www.1024cores.net/home/lock-free-algorithms/introduction) Our intent is 
 - **Wait-freedom** means that each thread moves forward regardless of external factors like contention from other threads, other thread blocking. 
   - Wait-free algorithms usually use such primitives as `atomic_exchange`, `atomic_fetch_add` - TODO: std::atomic
-  -  and they do not contain cycles that can be affected by other threads
+  -  and they do n`ot contain cycles that can be affected by other threads
 - **Lock-freedom** means that a system as a whole moves forward regardless of anything. 
   - It's a weaker guarantee than wait-freedom. Lockfree algorithms usually use `atomic_compare_exchange` primitive - TODO: std::atomic
   - Lock-free is when Execution happens in a `Read -> Modify -> Write` cycle
@@ -64,6 +64,7 @@
   - Get job - Do we have jobs left or do have to steal? 
   - Do job
   - Finish job (Notify)
+  - Yield
 - **Job**
   - Priorities (Low, Normal High)
   - Job function pointer `typedef void (*JobFunction)(Job*, const void*);`
@@ -81,9 +82,10 @@
     - `O(1)` allocation / deletion time. Objects are randomly created / deleted - due their dynamic nature
     - All allocation and de-allocation done in once, for fixed `N` count objects of fixed `M` size.
     - [Freelist](https://en.wikipedia.org/wiki/Free_list) - Connects all the unallocated memories via a linked list
+    - [Another article](https://medium.com/@mateusgondimlima/designing-and-implementing-a-pool-allocator-data-structure-for-memory-management-in-games-c78ed0902b69) 
 - **Stealing** - [Molecular matters, lock-free work stealing, part 3](https://blog.molecular-matters.com/2015/09/25/job-system-2-0-lock-free-work-stealing-part-3-going-lock-free/)
   - The **queue** implements - [Molecular matters, lock-free work stealing, part 3](https://blog.molecular-matters.com/2015/09/25/job-system-2-0-lock-free-work-stealing-part-3-going-lock-free/)
-    - Queue / Job ownership: *Private* is only accessible for the owning thread, and *Public* for everyone else.
+    - StealQueue / Job ownership: *Private* is only accessible for the owning thread, and *Public* for everyone else.
     - `Push()` - Adds a job to the private (LIFO) end of the queue.
     - `Pop()` - Removes a job from the private (LIFO) end of the queue.
     - `Steal()` - Steals a job from the public (FIFO) end of the queue.
@@ -95,20 +97,15 @@
   - Lock-free 
     - `Push()` only modifies `bottom` and cannot executed concurrently, but
     - `Steal()` reads `bottom` and writes `top`. 
+  - Wait-free and `Yield()`
+    - Yields CPU - Makes it sleep for a short amount of time 
+    - Heavily platform dependent - [std provides one](https://en.cppreference.com/w/cpp/thread/yield)
+
 - Use of fibers within tasks? - [Naughty dog](http://twvideo01.ubm-us.net/o1/vault/gdc2015/presentations/Gyrling_Christian_Parallelizing_The_Naughty.pdf)
 - **Paralell for** - https://blog.molecular-matters.com/2015/11/09/job-system-2-0-lock-free-work-stealing-part-4-parallel_for/
 - **Dependencies** - https://blog.molecular-matters.com/2016/04/04/job-system-2-0-lock-free-work-stealing-part-5-dependencies/
 
 
-
-
-
-
-
-
-
-
-    // TODO Increase bottom
 
 ## Implementation
 
