@@ -39,4 +39,3 @@ install(DIRECTORY / DESTINATION include FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY / DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 install(DIRECTORY / DESTINATION include FILES_MATCHING PATTERN "*.inl")
 
-add_dependencies(${LIBRARY} ExternalDependencies)
