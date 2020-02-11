@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <spdlog/spdlog.h>
-#include "BoundedMpmcQueue.h"
+#include "ThreadPool/BoundedMpmcQueue.h"
 
 TEST(StealingBoundedQueue, Overflow)
 {

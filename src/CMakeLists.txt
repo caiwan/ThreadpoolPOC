@@ -1,41 +1,48 @@
-Project(MyLibrary CXX)
+include(project_warnings)
 
-include(assign_source_group)
-
-set(LIBRARY TaskScheduler)
+include(AssignSourceGroup)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-file(GLOB_RECURSE SOURCE_FILES *.cpp *.c *.inc)
-file(GLOB_RECURSE HEADER_FILES *.h *.hpp *.inl)
+file(GLOB_RECURSE SOURCE_FILES
+    ThreadPool/*.cpp
+    ThreadPool/*.c
+    ThreadPool/*.inc
+    )
 
-add_library(${LIBRARY} STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
-target_include_directories(${LIBRARY}
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
-  PUBLIC ${SPDLOG_INCLUDE_DIR}
-  )
+file(GLOB_RECURSE HEADER_FILES
+    ThreadPool/*.h
+    ThreadPool/*.hpp
+    ThreadPool/*.inl
+    )
 
-target_link_directories(${LIBRARY} PUBLIC
-  ${SPDLOG_LIB_DIR}
-  )
+add_library(ThreadPool STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
-target_link_libraries(${LIBRARY}
-  ${SPDLOG_LIBRARIES}
-  Threads::Threads
-  )
+target_link_libraries(ThreadPool PRIVATE
+    spdlog
+    Threads::Threads
+    project_warnings
+    )
 
-if (MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /Ob1")
-endif (MSVC)
+target_include_directories(
+    ThreadPool
+    INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
-set_target_properties(${LIBRARY} PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(ThreadPool PROPERTIES DEBUG_POSTFIX "d")
+
+target_include_directories(ThreadPool
+    INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
 
 assign_source_group(${SOURCE_FILES} ${HEADER_FILES})
 
-install(TARGETS ${LIBRARY} DESTINATION lib)
+install(TARGETS ThreadPool DESTINATION lib)
 install(DIRECTORY / DESTINATION include FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY / DESTINATION include FILES_MATCHING PATTERN "*.hpp")
 install(DIRECTORY / DESTINATION include FILES_MATCHING PATTERN "*.inl")
-

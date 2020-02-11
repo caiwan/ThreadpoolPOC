@@ -1,5 +1,4 @@
-*.hlsl text eol=crlf
-*.fx text eol=crlf
+* text eol=crlf
 
 *.dae binary
 
@@ -11,8 +10,8 @@
 *.mp3 binary
 *.zip binary
 
-*.blend binary
-*.scene binary
-
+*.ply binary
+*.obj binary
+*.mtl binary
 *.fbx binary
 *.3ds binary

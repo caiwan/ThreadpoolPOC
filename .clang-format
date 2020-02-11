@@ -2,11 +2,11 @@
 Language:        Cpp
 BasedOnStyle:  Mozilla
 Standard:        Cpp11
-TabWidth:        2
+TabWidth:        4
 UseTab:          Never
-IndentWidth:     2
+IndentWidth:     4
 
-AccessModifierOffset: -2
+AccessModifierOffset: -4
 
 AlignAfterOpenBracket: DontAlign
 AlignEscapedNewlines: Left
@@ -49,12 +49,9 @@ ConstructorInitializerIndentWidth: 2
 BreakBeforeTernaryOperators: false
 
 AlwaysBreakBeforeMultilineStrings: true
-BreakConstructorInitializers: AfterColon
 BreakStringLiterals: true
 ColumnLimit:     200
 CompactNamespaces: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
-ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
 Cpp11BracedListStyle: false
 DerivePointerAlignment: false

@@ -4,20 +4,8 @@
 #include <cassert>
 #include <atomic>
 
-// TODO: set cache line size in compile time
-//#if 0
-//#  if 0
-//#    define SET_CACHELINE(CACHE_LINE_SIZE) __declspec(align(CACHE_LINE_SIZE))
-//#  else
-//#    define SET_CACHELINE(CACHE_LINE_SIZE) __attribute__((align(CACHE_LINE_SIZE)))
-//#  endif
-//#else
-//#  define SET_CACHELINE(CACHE_LINE_SIZE)
-//#endif
-
 namespace JobSystem
 {
-//  SET_CACHELINE(64)
   template<typename T> class BoundedMpmcQueue
   {
   public:
@@ -37,31 +25,28 @@ namespace JobSystem
     size_t Capacity() const noexcept;
 
   private:
-
     struct Cell
     {
-      std::atomic<size_t> sequence; // TODO: Do we really need this? How do we make this LIFO / FIFO dequeue?
+      std::atomic<size_t> sequence;
       T data = {};
     };
 
+    // **DO NOT ALTER THIS STRUCTURE**
     // Memory alignment
-    // Do NOT change this
+    // we'll need to make sure if the members aren't on the same cache line to prevent false acquisition
     static size_t const cachelineSize = 64;
     typedef char CachelinePadType[cachelineSize];
 
-    // Do NOT change this
-    // Especially Do NOT use std::unique_ptr<> and STL container
     CachelinePadType pad0_{};
     Cell * const mBuffer;
     size_t const mBufferMask;
-    CachelinePadType pad1_{};
+    volatile CachelinePadType pad1_{};
     std::atomic<size_t> mBottom{};
-    CachelinePadType pad2_{};
+    volatile CachelinePadType pad2_{};
     std::atomic<size_t> mTop{};
-    CachelinePadType pad3_{};
+    volatile CachelinePadType pad3_{};
   };
 
-  // Do NOT use std::unique_ptr<> and STL container
   template<typename T> BoundedMpmcQueue<T>::BoundedMpmcQueue(size_t bufferSize) : mBuffer(new Cell[bufferSize]), mBufferMask(bufferSize - 1)
   {
     assert((bufferSize >= 2) && ((bufferSize & (bufferSize - 1)) == 0));
@@ -87,7 +72,7 @@ namespace JobSystem
         pos = mBottom.load(std::memory_order_relaxed);
     }
     cell->data = data;
-    cell->sequence.store(pos + 1, std::memory_order_release); // TODO: What does this particlular line do?
+    cell->sequence.store(pos + 1, std::memory_order_release);
     return true;
   }
 
@@ -107,7 +92,7 @@ namespace JobSystem
         pos = mTop.load(std::memory_order_relaxed);
     }
     data = cell->data;
-    cell->sequence.store(pos + mBufferMask + 1, std::memory_order_release); // TODO: What does this particlular line do?
+    cell->sequence.store(pos + mBufferMask + 1, std::memory_order_release);
     return true;
   }
 

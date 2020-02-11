@@ -2,26 +2,26 @@
 
 **Under development**
 
-## Introduction
+## Introduction and fundamentals
 
 - Who has the best CPU utilization? The game industry!
-  - You have 16.66 ms to calulate physics, update animation and render a frame
+  - You have 16.66 ms to calculate physics, update animation and render a frame
   - On a mediocre 4-8-core hardware
   - Runs at millions of users, with different hardware, different situations
   - Their findings and methods are battle tested
-  - Let's learn it from them.
-- Pros
+  - *Let's learn it from them.*
+- **Pros**
   - Efficient way to predict the job load
-  - Efficient way to avoid locs, waits, and context switches
-- Cons
+  - Efficient way to avoid locks, waits, and context switches
+- **Cons**
   - Bounded (fix sized) queues and pools, in cost of being dynamic
   - Not always memory-efficient
-  - Certain way to program things (*TODO:specify*) Lots of optimization.
-  - Time framing (60 fps) (*TODO: specify*)
+  - Certain way to program things. (lockless algorythms, splitting large tasks)
+  - Time framing (60 fps, 16.66 ms) - You have one frame to collect tasks in the next frame. 
 
 ### Lockless-ness
 
-- [This article](http://www.1024cores.net/home/lock-free-algorithms/introduction) Our intent is 
+- [This article](http://www.1024cores.net/home/lock-free-algorithms/introduction) **Our intent is** 
 - **Wait-freedom** means that each thread moves forward regardless of external factors like contention from other threads, other thread blocking. 
   - Wait-free algorithms usually use such primitives as `atomic_exchange`, `atomic_fetch_add` - TODO: std::atomic
   -  and they do n`ot contain cycles that can be affected by other threads
@@ -32,20 +32,55 @@
 - **Obstruction-freedom** guarantee means that a thread makes forward progress only if it does not encounter contention from other threads.
   - *See [the original paper](http://www.cs.brown.edu/%7Emph/HerlihyLM03/main.pdf) by Maurice Herlihy*
 - **Termination-safety**
-  - Waitfree, lockfree and obstruction-free algorithms provide a guarantee of termination-safety. That is, a terminated thread does not prevent system-wide forward progress.
+  - Wait-free, lock-free and obstruction-free algorithms provide a guarantee of termination-safety. That is, a terminated thread does not prevent system-wide forward progress.
   
-### Atomic operations, `std::atomic`
-- See [std::atomic](https://en.cppreference.com/w/cpp/atomic/atomic)
-  - `load` and `store`
-  - `compare_exchange_strong` and `compare_exchabge_weak` - See [compare_exchange](https://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange)
-    
+### Atomic operations, `std::atomic<T>`
+- See [std::atomic reference](https://en.cppreference.com/w/cpp/atomic/atomic) and see [This talk](https://www.youtube.com/watch?v=ZQFzMfHIxng) from Fedor Pikos 
+- Memory operations are done in read-modify-write sequence, however there's race condition between stages.
+- Atomic operations - done in one single stage, CPU supported,
+    - Provides operator overloads only for atomic operations
+        - like `++x`, `x++`, `x+=1`, **EXCEPT**
+        - no atomic multiply (`x*=2`) 
+        - and `x = x +1` is an atomic read followed by write, which is not atommic
+        - `bool` has no special operators, as well as `double` - valid and will compile
+    - Member functions for better readability 
+        - `load()` - Assignment
+        - `store()` - Assignment
+        - `exchange()` - read-modify-write done atimically
+        - `compare_exchange_*(expected, newValue)` - if x==expected then x = new and return true, else returns false. - See [compare_exchange](https://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange)
+            - **Key** to *lock-free* algorithms; 
+            - `while(!compare_exchange_strong(x, x+1)) {}` - *Note* It's Lock-free but not wait-free!
+            - Also allows atomically commit otherwise non-atomic operations, like operations with `double`. 
+        - `fetch_*()` - `x.fetch_add(y)` same as `x+=y`, and returns the original value of x before it's change. Also `_sub`, `_and`, `_or`, `_xor` etc.
+        - 
+    - Performance 
+        - Not always guaranteed by different implementations of the platform
+        - `is_lock_free()` in runtime  and `is_always_lock_free()` in compile-time
+        - Atomics are lock and wait-free, but doesn't necessarily means that they don't wait on ea.
+        - Cache-line sharing that prevents atomicity and forces wait
+    - Compare and swap operation
+        - `compare_exchange_strong(expected, newValue)` - if x==expected then x = new and return true, else returns false. Always grantees this behaviour.
+        - `compare_exchange_weak(expected, newValue)` - same, but will *falsely* fail even if comparison is true, depends on hardware implementation, mostly due to timeout.
+        - See atomic queue and atomic list [starting from here](https://youtu.be/ZQFzMfHIxng?t=2255)
+
+#### Memory barriers
+
+- Essential part of atomics
 - See [std::memory_order](https://en.cppreference.com/w/cpp/atomic/memory_order) - *TODO: sort these* 
-  - **`memory_order_relaxed`** - Relaxed operation: there are no synchronization or ordering constraints imposed on other reads or writes, only this operation's atomicity is guaranteed 
-  - **`memory_order_consume`** - A load operation with this memory order performs a consume operation on the affected memory location: no reads or writes in the current thread dependent on the value currently loaded can be reordered before this load. Writes to data-dependent variables in other threads that release the same atomic variable are visible in the current thread. On most platforms, this affects compiler optimizations only.
-  - **`memory_order_acquire`** - A load operation with this memory order performs the acquire operation on the affected memory location: no reads or writes in the current thread can be reordered before this load. All writes in other threads that release the same atomic variable are visible in the current thread.
-  - **`memory_order_release`** - A store operation with this memory order performs the release operation: no reads or writes in the current thread can be reordered after this store. All writes in the current thread are visible in other threads that acquire the same atomic variable (see Release-Acquire ordering below) and writes that carry a dependency into the atomic variable become visible in other threads that consume the same atomic.
-  - **`memory_order_acq_rel`** - A read-modify-write operation with this memory order is both an acquire operation and a release operation. No memory reads or writes in the current thread can be reordered before or after this store. All writes in other threads that release the same atomic variable are visible before the modification and the modification is visible in other threads that acquire the same atomic variable.
-  - **`memory_order_seq_cst`** - A load operation with this memory order performs an acquire operation, a store performs a release operation, and read-modify-write performs both an acquire operation and a release operation, plus a single total order exists in which all threads observe all modifications in the same order. 
+- [from here](https://youtu.be/ZQFzMfHIxng?t=2546)
+1. **`std::memory_order_relaxed`**
+    - there are no synchronization or ordering changes
+    - only this operation's atomicity is guaranteed
+2. **`std::memory_order_acquire`**
+    - grantees that memory operations are scheduled after the barrier
+    - both read and write operations
+    - all memory operations (not just )
+3. **`std::memory_order_release`**  
+4. **`std::memory_order_acq_rel`** and **`std::memory_order_seq_cst`** 
+  
+#### On programmers intent    
+
+- **TBD** 
   
 ### Basics of design a Job system
 - [Molecular matters, lock-free work stealing, part 1](https://blog.molecular-matters.com/2015/08/24/job-system-2-0-lock-free-work-stealing-part-1-basics/)
@@ -66,7 +101,7 @@
   - Finish job (Notify)
   - Yield
 - **Job**
-  - Priorities (Low, Normal High)
+  - Priorities comes from the order of insertion
   - Job function pointer `typedef void (*JobFunction)(Job*, const void*);`
   - Pointer to parent, 
   - unfinished job count, which is atomic
@@ -94,20 +129,31 @@
     - `top` - the next element that can be stolen - Incremented by `Steal()`
     - `Size()` is `bottom - top`, this means that also
     - `IsEmpty` is `bottom == top`
-  - Lock-free 
-    - `Push()` only modifies `bottom` and cannot executed concurrently, but
-    - `Steal()` reads `bottom` and writes `top`. 
+  - [Bounded MPMC queue](http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue) - **TBD** 
+    - `Push()` ~~only modifies `bottom` and cannot executed concurrently, but~~
+    - `Pop()`
+    - ~~the `Steal()` reads `bottom` and writes `top`.~~
+    - *Better to use queu instead of a dequeue;* However It might be better at spawining child-tasks. Similar ideas at
+        - [1](https://codereview.stackexchange.com/questions/158711/naive-lock-free-work-stealing-queue) Stackoverfloow 
+        - [2](https://www.reddit.com/r/rust/comments/6loior/mpmc_priority_queue/) Reddit /r/rust
+        - [3](https://groups.google.com/forum/#!topic/lock-free/glph_p4-dRM) Scalable Synchronization Algorithms *Google Group*
+        - *However none of these are completely suitable* 
   - Wait-free and `Yield()`
     - Yields CPU - Makes it sleep for a short amount of time 
     - Heavily platform dependent - [std provides one](https://en.cppreference.com/w/cpp/thread/yield)
-
-- Use of fibers within tasks? - [Naughty dog](http://twvideo01.ubm-us.net/o1/vault/gdc2015/presentations/Gyrling_Christian_Parallelizing_The_Naughty.pdf)
+  - Thread local - [thread_local](https://en.cppreference.com/w/cpp/keyword/thread_local) keyword, see [storage duration](https://en.cppreference.com/w/cpp/language/storage_duration)
+- **TBD**
+    - Use of fibers within tasks? - [Naughty dog](http://twvideo01.ubm-us.net/o1/vault/gdc2015/presentations/Gyrling_Christian_Parallelizing_The_Naughty.pdf)
 - **Paralell for** - https://blog.molecular-matters.com/2015/11/09/job-system-2-0-lock-free-work-stealing-part-4-parallel_for/
 - **Dependencies** - https://blog.molecular-matters.com/2016/04/04/job-system-2-0-lock-free-work-stealing-part-5-dependencies/
 
-
-
 ## Implementation
+- [This simple example](https://github.com/progschj/ThreadPool)
+    - Bit more modern approach 
+    - Takes lambdas 
+    - Wraps them into [`std::packaged_task`](https://en.cppreference.com/w/cpp/thread/packaged_task)
+    - Constructs a [`future`](https://en.cppreference.com/w/cpp/thread/future)
+    - **Problem**: You need to be able to execute another task if you need to wait for a result. 
 
 ## Notes
 - [Lock-free programming with modern C++ - Timur Doumler [ACCU 2017]](https://www.youtube.com/watch?v=qdrp6k4rcP4) Presentation, Youtube
